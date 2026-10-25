@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Talous</title>
+  <meta name="description" content="Oma talousennuste: tulevat palkat, kulut ja saldo.">
+  <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Talous">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1 id="view-title">Yleiskuva</h1>
+  </header>
+
+  <main id="app" aria-live="polite"></main>
+
+  <nav class="tabbar" aria-label="Päävalikko">
+    <button data-view="overview" class="active" aria-label="Yleiskuva">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h4v8H3zM10 8h4v13h-4zM17 3h4v18h-4z"/></svg>
+      <span>Yleiskuva</span>
+    </button>
+    <button data-view="upcoming" aria-label="Tulevat">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3M17 2v3M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="none" stroke-width="2" stroke="currentColor"/></svg>
+      <span>Tulevat</span>
+    </button>
+    <button class="fab" data-action="quick-add" aria-label="Lisää toteutunut kulu tai tulo">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke-width="2.5" stroke="currentColor" stroke-linecap="round"/></svg>
+    </button>
+    <button data-view="plan" aria-label="Suunnitelma">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke-width="2" stroke="currentColor" stroke-linecap="round"/></svg>
+      <span>Suunnitelma</span>
+    </button>
+    <button data-view="history" aria-label="Historia ja asetukset">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z" fill="none" stroke-width="2" stroke="currentColor" stroke-linecap="round"/></svg>
+      <span>Historia</span>
+    </button>
+  </nav>
+
+  <dialog id="sheet" class="sheet">
+    <form method="dialog" id="sheet-form"></form>
+  </dialog>
+
+  <div id="toast" role="status" hidden></div>
+
+  <script src="forecast.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
