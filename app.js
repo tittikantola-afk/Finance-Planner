@@ -90,7 +90,7 @@
     switch (item.freq) {
       case 'monthly': {
         const day = Number(item.start.slice(8, 10));
-        const dayText = day >= 29 ? `${day}. pv (tai kuun viim.)` : `${day}. pv`;
+        const dayText = item.lastDay ? 'kuun viimeinen päivä' : day >= 29 ? `${day}. pv (tai kuun viim.)` : `${day}. pv`;
         return (n === 1 ? 'Kuukausittain' : `Joka ${n}. kuukausi`) + ', ' + dayText;
       }
       case 'weekly':
@@ -485,6 +485,8 @@
 
   function openSheet(html, onAction) {
     sheetForm.innerHTML = `<div class="sheet-grab"></div>${html}`;
+    sheetForm.oninput = null;
+    sheetForm.onchange = null;
     sheetForm.onsubmit = (ev) => {
       ev.preventDefault();
       const action = ev.submitter ? ev.submitter.value : 'save';
@@ -685,7 +687,8 @@
     openSheet(`<h2>${isNew ? 'Uusi erä' : 'Muokkaa'}</h2>
       ${kindSeg}
       <label class="field"><span>Nimi</span><input name="name" type="text" value="${esc(item.name)}" placeholder="esim. Palkka, Vuokra, Ruoka" required ${isNew ? 'autofocus' : ''}></label>
-      <label class="field"><span>Summa (€)</span><input name="amount" type="text" inputmode="decimal" value="${item.amount !== '' ? String(item.amount).replace('.', ',') : ''}" required></label>
+      <label class="field"><span>Summa (€)</span><input name="amount" type="text" inputmode="decimal" value="${item.amount !== '' ? String(item.amount).replace('.', ',') : ''}" required>
+        <small data-show="freq=monthly|weekly|yearly">Oletussumma. Jos summa vaihtelee, muuta yksittäisiä kertoja alempana.</small></label>
       <label class="field"><span>Toistuvuus</span>
         <select name="freq" data-seg="freq">
           ${[['monthly', 'Kuukausittain'], ['weekly', 'Viikoittain'], ['yearly', 'Vuosittain'], ['once', 'Kerran'], ['budget', 'Kuukausibudjetti (tasaisesti jaettu)']]
@@ -697,16 +700,62 @@
       <label class="field"><span data-show="freq=monthly|weekly|yearly">Seuraava (tai ensimmäinen) kerta</span><span data-show="freq=once">Päivä</span><span data-show="freq=budget">Alkaen</span>
         <input name="start" type="date" value="${item.start}" required>
         <small data-show="freq=monthly">Päivästä päätellään kuukauden päivä. Jos päivä on 29–31, lyhyinä kuukausina käytetään kuun viimeistä päivää.</small></label>
+      <label class="check inline" data-show="freq=monthly"><input type="checkbox" name="lastDay" value="1" ${item.lastDay ? 'checked' : ''}>
+        <span>Aina kuun viimeinen päivä <small>(esim. palkka 31.10., 30.11., 31.12.)</small></span></label>
       <label class="field" data-show="freq=monthly|weekly|yearly"><span>Jos osuu viikonloppuun</span>
         <select name="weekendRule">${[['none', 'Ei siirtoa'], ['prev', 'Edellinen arkipäivä (tyypillinen palkkapäivä)'], ['next', 'Seuraava arkipäivä (tyypillinen eräpäivä)']]
           .map(([v, l]) => `<option value="${v}" ${item.weekendRule === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label class="field" data-show="!freq=once"><span>Päättyy (valinnainen)</span><input name="end" type="date" value="${item.end || ''}"></label>
+      <div class="occ-amounts" data-show="freq=monthly|weekly|yearly">
+        <div class="field-label">Summat kerroittain</div>
+        <small class="occ-help">Tyhjä kenttä = oletussumma. Täytä, jos summa poikkeaa (esim. vaihteleva palkka).</small>
+        <div id="occ-list" class="occ-list"></div>
+      </div>
       <p class="help" data-show="freq=budget">Budjetti on aina meno. Kirjaa ostot +-napista tälle budjetille, niin jäljellä oleva summa jaetaan kuun loppupäiville.</p>
       <div class="sheet-actions">
         ${isNew ? '<button value="cancel" class="btn ghost" formnovalidate>Peruuta</button>' : '<button value="delete" class="btn ghost danger" formnovalidate>Poista</button>'}
         <button value="save" class="btn primary">Tallenna</button>
       </div>`,
     (action, data) => {
+      return saveItem(action, data);
+    });
+
+    // Tulevien kertojen summat: lista päivittyy, kun toistuvuutta tai päivää muutetaan.
+    const itemId = item.id || uid();
+    const typed = {};
+    const occList = document.getElementById('occ-list');
+    function renderOccList() {
+      const fd = new FormData(sheetForm);
+      const freq = fd.get('freq');
+      if (!['monthly', 'weekly', 'yearly'].includes(freq) || !fd.get('start')) { occList.innerHTML = ''; return; }
+      const start = fd.get('start');
+      const temp = {
+        freq, start, interval: Number(fd.get('interval')) || 1, end: fd.get('end') || '',
+        day: freq === 'monthly' && fd.get('lastDay') ? 31 : Number(start.slice(8, 10)),
+      };
+      const until = F.addMonths(today, Math.max(6, Number(state.settings.horizonMonths) || 6));
+      const from = start > today ? start : today;
+      const dates = F.nominalDates(temp, from, until).slice(0, freq === 'weekly' ? 26 : 12);
+      const def = fd.get('amount') || '';
+      occList.innerHTML = dates.length ? dates.map((nominal) => {
+        const ov = state.overrides[F.occKey(itemId, nominal)] || {};
+        if (ov.status === 'confirmed') return '';
+        const val = typed[nominal] != null ? typed[nominal] : ov.amount != null ? String(ov.amount).replace('.', ',') : '';
+        const eff = F.adjustWeekend(nominal, fd.get('weekendRule'));
+        const label = freq === 'weekly' ? dateShort(eff) : monthName(nominal.slice(0, 7));
+        return `<label class="occ-row"><span><b>${label}</b><small>${dateShort(eff)}${eff !== nominal ? ' (siirretty viikonlopulta)' : ''}</small></span>
+          <input name="occ_${nominal}" type="text" inputmode="decimal" placeholder="${esc(def)}" value="${esc(val)}"></label>`;
+      }).join('') : '<small class="occ-help">Ei tulevia kertoja.</small>';
+    }
+    sheetForm.oninput = (ev) => {
+      const n = ev.target.name || '';
+      if (n.startsWith('occ_')) { typed[n.slice(4)] = ev.target.value; return; }
+      if (['freq', 'start', 'interval', 'end', 'lastDay', 'weekendRule', 'amount'].includes(n)) renderOccList();
+    };
+    sheetForm.onchange = sheetForm.oninput;
+    renderOccList();
+
+    function saveItem(action, data) {
       if (action === 'delete') {
         if (!confirm(`Poistetaanko "${item.name}"? Jo kirjatut toteumat säilyvät historiassa.`)) return true;
         state.items = state.items.filter((i) => i.id !== item.id);
@@ -724,10 +773,20 @@
         start: data.start,
         end: data.freq === 'once' ? '' : (data.end || ''),
         weekendRule: data.weekendRule || 'none',
+        lastDay: data.freq === 'monthly' && !!data.lastDay,
       });
-      next.day = Number(next.start.slice(8, 10));
+      next.day = next.lastDay ? 31 : Number(next.start.slice(8, 10));
+      // Kertakohtaiset summat talletetaan poikkeuksina (overrides).
+      for (const [k, v] of Object.entries(data)) {
+        if (!k.startsWith('occ_')) continue;
+        const key = F.occKey(itemId, k.slice(4));
+        const ov = Object.assign({}, state.overrides[key]);
+        if (String(v).trim() !== '' && Math.abs(num(v)) !== next.amount) ov.amount = Math.abs(num(v));
+        else delete ov.amount;
+        if (Object.keys(ov).length) state.overrides[key] = ov; else delete state.overrides[key];
+      }
       if (isNew) {
-        next.id = uid();
+        next.id = itemId;
         // Ennen lisäyspäivää olleita eriä ei näytetä myöhässä olevina.
         next.since = next.start < today ? today : next.start;
         state.items.push(next);
@@ -738,7 +797,7 @@
       }
       save();
       toast(isNew ? 'Lisätty' : 'Tallennettu');
-    });
+    }
   }
 
   function sheetQuickAdd() {

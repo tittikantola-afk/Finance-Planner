@@ -321,3 +321,19 @@ table.months { width: 100%; border-collapse: collapse; font-size: 14px; font-var
 .chart .floor { fill: none; stroke: var(--floor); stroke-width: 1.5; stroke-dasharray: 2 3; }
 .key.floor { border-top: 2px dotted var(--floor); margin-left: 10px; }
 .field-label { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 12px 0 -6px; }
+
+/* Kertakohtaiset summat */
+.check.inline { border-top: 0; padding: 4px 0 8px; }
+.occ-amounts { margin: 16px 0 8px; }
+.occ-amounts .field-label { margin: 0 0 2px; }
+.occ-help { display: block; font-size: 12px; color: var(--text-3); margin-bottom: 6px; }
+.occ-list { background: var(--surface-2); border-radius: 12px; padding: 2px 12px; }
+.occ-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.occ-row:first-child { border-top: 0; }
+.occ-row span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.occ-row small { font-size: 12px; color: var(--text-3); }
+.occ-row input {
+  width: 120px; text-align: right; padding: 8px 10px; min-height: 40px; font-size: 17px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); -webkit-appearance: none; appearance: none;
+}
+.occ-row input:focus { outline: 2px solid var(--accent); }

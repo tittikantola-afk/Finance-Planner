@@ -1,5 +1,5 @@
 /* Offline-tuki: sovelluksen tiedostot välimuistiin. Nosta versiota, kun tiedostot muuttuvat. */
-const CACHE = 'talous-v2';
+const CACHE = 'talous-v3';
 const ASSETS = ['./', 'index.html', 'styles.css', 'forecast.js', 'app.js', 'manifest.webmanifest',
   'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
